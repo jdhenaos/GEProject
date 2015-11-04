@@ -11,6 +11,12 @@ output: pdf_document
 
 **Descripción del problema:**
 
+El tizón tardío es una enfermedad que afecta al tomate y a la papa provocando grandes pérdidas en este tipo de plantas de interés comercial por lo cual está asociado con las mayores pérdidas en el sector productivo, lo que pone en riesgo las políticas de seguridad alimentaria (Sierra, *et al*. 2010).
+
+Este problema de índole fitopatologico es causado por el oomycete *Phytophthora infestans* el cual provoca en las plantas hospederas síntomas tales como la aparición de manchas circulares e irregulares que pueden ser de color café o negro y además en los tubérculos causan lesiones irregulares de color cobre o marrón que pueden propagarse hasta pudrirse por completo (Bush, *et al*. 2012).
+
+*P. infestans* afecta a un amplio rango de hospederos dentro de la familia Solanaceae. En Colombia, la especie de papa amarilla (*Solanum phureja*), es cultivada de manera intensiva y el tizón tardío es la principal fuente de pérdidas y no ha sido posible generar controles efectivos contra el patógeno *P. infestans* debido al poco conocimiento que se posee entre la interacción de estas dos especies a pesar de los esfuerzos por determinar todos los componentes moleculares asociados al patosistema planta-oomycete (Sierra, *et al*. 2010).
+
 **Descripción de los datos**
 ```{r}
 # Librerías requeridas
@@ -25,3 +31,9 @@ GSE14480<- GSE14480$GSE14480_series_matrix.txt.gz
 head(exprs(GSE14480))
 
 ```
+
+**Bibliografía**
+
+**1** Bush, E. A., Rideout, S. L., & Waldenmaier, C. (2012). Late Blight of Tomato and Potato.
+
+**2** Sierra, R., Rodriguez, R. L., Chaves, D., Pinzón, A., Grajales, A., Rojas, A., ... & Restrepo, S. (2010). Discovery of Phytophthora infestans genes expressed in planta through mining of cDNA libraries. PloS one, 5(3).
