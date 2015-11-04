@@ -1,0 +1,27 @@
+---
+output: pdf_document
+---
+**Comparación de redes de co-expresión derivadas de la interacción entre *Phythophthora infestans* y *Solanum spp***
+
+**Estudiantes:**
+
+1.  Kelly Botero
+2.  Juan Henao
+3.  Daniel Osorio
+
+**Descripción del problema:**
+
+**Descripción de los datos**
+```{r}
+# Librerías requeridas
+library("GEOquery")
+library("vsn")
+
+# Datos elegidos:
+GSE14480<- getGEO("GSE14480")
+GSE14480<- GSE14480$GSE14480_series_matrix.txt.gz
+
+# Verificando los datos
+head(exprs(GSE14480))
+
+```
