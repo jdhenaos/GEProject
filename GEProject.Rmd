@@ -20,18 +20,22 @@ Múltiples investigaciones han intentado comprender aspectos moleculares que sub
 *P. infestans* afecta a un amplio rango de hospederos dentro de la familia Solanaceae. En Colombia, la especie de papa amarilla (*Solanum phureja*), es cultivada de manera intensiva y el tizón tardío es la principal fuente de pérdidas y no ha sido posible generar controles efectivos contra el patógeno *P. infestans* debido al poco conocimiento que se posee entre la interacción de estas dos especies a pesar de los esfuerzos por determinar todos los componentes moleculares asociados al patosistema planta-oomycete (Sierra, *et al*. 2010).
 
 **Descripción de los datos**
+Los datos disponibles son derivados de la inoculación de plantas de 4 semanas de *Solanum phureja* con *Phytophthora infestans*. Las muestras de RNA fueron tomadas a las 12 y 72 horas posterior a la inoculación en plantas resistentes y susceptibles. 
 ```{r}
 # Librerías requeridas
 library("GEOquery")
 library("vsn")
 
-# Datos elegidos:
-GSE14480<- getGEO("GSE14480")
-GSE14480<- GSE14480$GSE14480_series_matrix.txt.gz
+# # Datos elegidos:
+# GSE11781<- getGEO("GSE11781")
+# GSE11781<- GSE11781$GSE11781_series_matrix.txt.gz
+# 
+# # Verificando los datos
+# head(exprs(GSE11781))
 
-# Verificando los datos
-head(exprs(GSE14480))
-
+# Muestra de la data
+data<-read.csv("~/Downloads/GSM298187-7189.txt",sep = "\t")
+head(data)
 ```
 
 **Bibliografía**
