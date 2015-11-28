@@ -1,0 +1,2 @@
+/home/juan/Documentos/Rmux/Sedges.txt;Sensible;/home/juan/Documentos/Rmux/Layouts.txt
+/home/juan/Documentos/Rmux/Redges.txt;Resistente;/home/juan/Documentos/Rmux/Layouts.txt
