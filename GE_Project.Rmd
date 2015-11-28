@@ -1,0 +1,269 @@
+---
+output: pdf_document
+includes:
+  in_header:'header.tex'
+---
+```{r,warning=FALSE,message=FALSE,fig.height=3.7,dpi=100}
+## Kelly Botero - Juan Henao - Daniel Osorio
+
+## INFORMACIÓN SUPLEMENTARIA: 
+## Comparación de redes de co-expresión derivadas de la interacción
+## compatible e incompatible entre *Phythophthora infestans* y *Solanum phureja*.
+
+# Cargando Librerías
+library("GEOquery")
+library("seqinr")
+library("DESeq")
+library("igraph")
+
+# Descargando datos
+# getGEO(GEO = "GSE11781",GSEMatrix = TRUE,destdir = ".")
+
+# Leyendo Datos
+GSE11781<-read.csv(gzfile("GSE11781_series_matrix.txt.gz"),
+                   comment.char = "!",
+                   sep = "\t",
+                   stringsAsFactors = FALSE)
+dim(GSE11781)[1]
+
+# Eliminando filas con datos incompletos
+C_GSE11781<- GSE11781[complete.cases(GSE11781),]
+dim(C_GSE11781)[1]
+
+# Creando multifasta para BLAST
+# write.fasta(sequences = strsplit(as.vector(C_GSE11781[1:dim(C_GSE11781)[1],1]),""),
+#             names = 1:dim(C_GSE11781)[1],
+#             file.out = "Solanum_phureja.fasta")
+
+# BLAST remoto con cobertura 100% y E-Value menor a 0.05
+# system("blastn -db nr -query Solanum_phureja.fasta 
+#         -task 'blastn-short' -perc_identity 100 -num_alignments 1 
+#         -outfmt 6 -evalue 0.05 -out Solanum_phureja.out -remote 
+#         -entrez_query 'txid4113[ORGN]'")
+
+# Leyendo los datos de anotación
+A_GSE11781<-read.csv("Solanum_phureja.out",sep = "\t",header = FALSE)
+
+# Buscando genes únicos
+names<-as.vector(A_GSE11781[,2])
+IDs <- function(name){strsplit(name,"|",fixed = TRUE)[[1]][4]}
+A_GSE11781[,2]<-as.vector(sapply(names,IDs))
+T<-names(table(A_GSE11781[,2]))
+
+# Declarando función para obtener el número máximo de conteos
+colMax <- function(data){sapply(data, max, na.rm = TRUE)}
+
+# Función para extraer el número máximo de conteos desde nuestros datos
+maxcounts<- function(id){
+  colMax(C_GSE11781[A_GSE11781[A_GSE11781[,2]==id,1],2:7])
+}
+
+# Extrayendo datos finales
+GSE11781<-t(sapply(T[grep("_",T)], maxcounts))
+head(GSE11781)
+
+# Escribiendo archivo de resultados
+# write.table(x = GSE11781,
+#             quote = FALSE,
+#             sep = "\t",
+#             file = "Solanum_phureja.anotado")
+
+# Creando el countData
+CD_GSE11781<-newCountDataSet(GSE11781, factor(c("R1","S1","R2","S2","R3","S3")))
+
+# Normalizando datos
+CD_GSE11781<-estimateSizeFactors(CD_GSE11781)
+sizeFactors(CD_GSE11781)
+
+# Imprimiendo datos normalizados
+head(counts(CD_GSE11781,normalized=TRUE))
+
+# Declarando la función para imprimir la dispersión
+plotDispEsts <- function( datacds ){
+  plot(rowMeans(counts( datacds, normalized=TRUE )),
+       fitInfo(datacds)
+       $perGeneDispEsts, cex=0.2, log="xy", ylab="dispersion",
+       xlab="mean of normalized counts")
+  xg = 10^seq( -.5, 5, length.out=300)
+  lines( xg, fitInfo(datacds)$dispFun(xg), col="red" )
+}
+
+# Calculando dispersión con correcciones para una unica replica
+CD_GSE11781<-estimateDispersions(CD_GSE11781,method='blind',sharingMode="fit-only")
+plotDispEsts(CD_GSE11781)
+
+## INTERACCIÓN INCOMPATIBLE
+# Calculando diferencialmente expresados en interacción incompatible
+RDE_GSE11781 <- nbinomTest(CD_GSE11781,"R1","R3")
+
+# Definiendo expresión diferencial en interacción incompatible
+RDE<-(quantile(abs(RDE_GSE11781$log2FoldChange[is.finite(RDE_GSE11781$log2FoldChange)]),
+               probs = 0.99)*1.1)
+
+# Graficando diferencialmente expresados en interacción incompatible
+plotMA(RDE_GSE11781,col = ifelse(abs(RDE_GSE11781$log2FoldChange)>RDE,"red3","black"))
+
+# Imprimiendo diferencialmente expresados en interacción incompatible
+RDE_GSE11781<-RDE_GSE11781[abs(RDE_GSE11781$log2FoldChange)>RDE,]
+dim(RDE_GSE11781)[1]
+head(RDE_GSE11781)
+
+## INTERACCIÓN COMPATIBLE
+# Calculando diferencialmente expresados en interacción compatible
+SDE_GSE11781 <- nbinomTest(CD_GSE11781,"S1","S3")
+
+# Definiendo expresión diferencial en interacción compatible
+SDE<-(quantile(abs(SDE_GSE11781$log2FoldChange[is.finite(SDE_GSE11781$log2FoldChange)]),
+               probs = 0.99)*1.1)
+
+# Graficando diferencialmente expresados en interacción compatible
+plotMA(SDE_GSE11781,col = ifelse(abs(SDE_GSE11781$log2FoldChange)>SDE,"red3","black"))
+
+# Imprimiendo diferencialmente expresados en interacción compatible
+SDE_GSE11781<-SDE_GSE11781[abs(SDE_GSE11781$log2FoldChange)>SDE,]
+dim(SDE_GSE11781)[1]
+head(SDE_GSE11781)
+
+# Identificando si existe un core de genes entre interaccion compatible e incompatible
+SDE_GSE11781[SDE_GSE11781[,1] %in% RDE_GSE11781[,1],1]
+write.table(SDE_GSE11781[SDE_GSE11781[,1] %in% RDE_GSE11781[,1],1],
+            quote = FALSE,row.names = FALSE,col.names = FALSE,
+            file = "Genes_Core.txt")
+
+# Matriz de similitud interacción compatible
+M_SDE<-(abs(cor(t((counts(CD_GSE11781,normalized=TRUE)[SDE_GSE11781[,1],])), 
+                use = "p",method = "p")))
+
+# Matriz de similitud interacción incompatible
+M_RDE<-(abs(cor(t(counts(CD_GSE11781,normalized=TRUE)[RDE_GSE11781[,1],]), 
+                use = "p",method = "p")))
+
+
+# Función que calcula valor umbral entre una red aleatoria y una red real
+threshold<-function(smatrix){
+  
+  # Identifica el tamaño de la matriz
+  n=nrow(smatrix)
+  
+  # Crea un vector de umbrales a ser evaluados:
+  ltaos=seq(0.01,0.99,by=0.01)
+  
+  # Crea un vector que guarda el grado de nodo de cada gen (ki) y 
+  # los coeficientes de agrupamiento locales (Ci) por cada valor de tao:
+  C<-K<-matrix(nrow=n, ncol=length(ltaos))
+  
+  # Calcula el grado de nodo (ki) y el coeficiente de 
+  # agrupamiento local (Ci) por cada valor de tao:
+  for(tao in ltaos){
+    
+    # Matriz de adyacencia:
+    A=matrix(0,nrow=n,ncol=n)  
+    
+    # Completa la matriz de adyacencia usando la funci?n de adyacencia:
+    for(i in 1:n){  
+      A[which(smatrix[,i]>=tao),i]<-1
+      A[which(smatrix[,i]<tao),i]<-0
+    }
+    
+    # Transforma la matriz A en un objeto igraph:
+    A=graph.adjacency(A,mode="undirected",diag=FALSE)
+    
+    # Calcula el Ci de los nodos:
+    Cv=transitivity(A,type="local")
+    
+    # Calcula el ki de los nodos:
+    Kv=degree(A,loops=FALSE)
+    ##Guarda Ci y ki en los vectores C y K respectivamente:
+    K[,round(tao*100,0)]<-Kv
+    C[,round(tao*100,0)]<-Cv
+  }
+  
+  # Calcula el coeficiente de agrupamiento de la red (Co) y el coeficiente de agrupamiento 
+  # esperado para una red aleatoria (Cr), a distintos valores de tao:
+  
+  # Define vectores que guardan los coeficientes:
+  Cr=Co=rep(0,100)
+  
+  # Para cada valor de tao:
+  for(i in round(ltaos*100,0)){  
+    
+    # Posición de los genes conectados en la red
+    gn<-which(K[,i]>=1)
+    
+    # Número de nodos en la red
+    kn=length(gn)
+    
+    # Variable en ecuación 3 (Ver Elo et.al. 2007)
+    k1=1/kn*sum(K[gn,i])
+    
+    # Variable en ecuación 3 (Ver Elo et.al. 2007)
+    k2=1/kn*sum(K[gn,i]^2)
+    
+    # Coeficiente de agrupamiento esperado para una red aleatoria
+    Co[i]=((k2-k1)^2)/(kn*k1^3) 
+    
+    # Si no hay nodos conectados: Co=0
+    if(kn==0){Co[i]=0}
+    
+    # Posición de los genes con k1>1.
+    gn<-which(K[,i]>1)
+    
+    # Número de genes con más de una arista en la red
+    kn=length(gn)
+    
+    # Coeficiente de agrupamiento observado en la red.
+    Cr[i]=1/kn*sum(C[gn,i])
+    
+    # Si no hay nodos conectados: Cr=0
+    if(kn==0){Cr[i]=0}
+  }
+  
+  # Función para suavizar la curva
+  dif=runmed(abs(Cr-Co),k=3,endrule="constant")[1:100]  
+  
+  # Función para identificar el primer máximo local
+  localMaxima <- function(x) {
+    y <- diff(c(-Inf, x)) > 0L
+    rle(y)$lengths
+    y <- cumsum(rle(y)$lengths)
+    y <- y[seq.int(1L, length(y), 2L)]
+    if (x[[1]] == x[[2]]) {
+      y <- y[-1]
+    }
+    return (y)
+  }
+  # Retorna el primer máximo local
+  return(ltaos[min(localMaxima(dif))])
+}
+# Calculo del Threshold por Red
+threshold(M_RDE)
+threshold(M_SDE)
+
+#Finalmente se obtiene la matriz de adyacencia de la red al umbral seleccionado.
+amatrix<-function(smatrix){
+  
+  #Define matriz de adyacencia:
+  A=matrix(0,nrow=nrow(smatrix),ncol=nrow(smatrix))    
+  
+  #Completa la matriz de adyacencia usando la función de adyacencia:
+  A[which(smatrix>threshold(smatrix))]<-1
+  
+  #Agrega nombres a filas y columnas
+  colnames(A)<-rownames(A)<-rownames(smatrix)
+  
+  #Convierte la diagonal en ceros (red no dirigida):
+  diag(A)<-0
+  
+  #Elimina nodos no conectados:
+  conected <- which(rowSums(A)>1)
+  A=A[conected,conected]
+  
+  #Crea objeto igraph:
+  A=graph.adjacency(A,mode="undirected",add.colnames=NULL,diag=FALSE)
+  return(A)
+}
+
+#Guarda listado de aristas:
+write.graph(amatrix(M_SDE),"Red_Sensible.txt",format="ncol")
+write.graph(amatrix(M_RDE),"Red_Resistente.txt",format="ncol")
+```
